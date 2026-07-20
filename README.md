@@ -45,7 +45,113 @@ To create a Bayesian Network for the given weather dataset using Python.
 ## Program
 
 ```python
-# Paste your complete Python program here
+# Install (run once)
+# pip install pybbn
+
+import pandas as pd
+import networkx as nx
+import matplotlib.pyplot as plt
+
+from pybbn.graph.dag import Bbn
+from pybbn.graph.edge import Edge, EdgeType
+from pybbn.graph.node import BbnNode
+from pybbn.graph.variable import Variable
+from pybbn.pptc.inferencecontroller import InferenceController
+
+# Load dataset
+df = pd.read_csv("weatherAUS.csv")
+
+# Data preprocessing
+df = df.dropna(subset=["RainTomorrow"])
+df = df.fillna(df.mean(numeric_only=True))
+
+# Create bands
+df["HumidityBand"] = pd.cut(
+    df["Humidity3pm"],
+    bins=[0, 30, 60, 100],
+    labels=["Low", "Medium", "High"]
+)
+
+df["TempBand"] = pd.cut(
+    df["Temp3pm"],
+    bins=[-10, 20, 30, 50],
+    labels=["Low", "Medium", "High"]
+)
+
+# Function to calculate probabilities
+def get_probs(data, child, parents=[]):
+    if len(parents) == 0:
+        return data[child].value_counts(normalize=True).sort_index().values.tolist()
+
+    elif len(parents) == 1:
+        return pd.crosstab(
+            data[parents[0]],
+            data[child],
+            normalize="index"
+        ).sort_index().values.flatten().tolist()
+
+    elif len(parents) == 2:
+        return pd.crosstab(
+            [data[parents[0]], data[parents[1]]],
+            data[child],
+            normalize="index"
+        ).sort_index().values.flatten().tolist()
+
+# Create nodes
+humidity = BbnNode(
+    Variable(0, "HumidityBand", ["Low", "Medium", "High"]),
+    get_probs(df, "HumidityBand")
+)
+
+temp = BbnNode(
+    Variable(1, "TempBand", ["Low", "Medium", "High"]),
+    get_probs(df, "TempBand")
+)
+
+rain = BbnNode(
+    Variable(2, "RainTomorrow", ["No", "Yes"]),
+    get_probs(df, "RainTomorrow", ["HumidityBand", "TempBand"])
+)
+
+# Build Bayesian Network
+bbn = Bbn()
+bbn.add_node(humidity)
+bbn.add_node(temp)
+bbn.add_node(rain)
+
+bbn.add_edge(Edge(humidity, rain, EdgeType.DIRECTED))
+bbn.add_edge(Edge(temp, rain, EdgeType.DIRECTED))
+
+# Perform inference
+join_tree = InferenceController.apply(bbn)
+
+# Draw graph
+G = nx.DiGraph()
+G.add_edge("HumidityBand", "RainTomorrow")
+G.add_edge("TempBand", "RainTomorrow")
+
+pos = {
+    "HumidityBand": (0, 1),
+    "TempBand": (2, 1),
+    "RainTomorrow": (1, 0)
+}
+
+plt.figure(figsize=(8, 5))
+nx.draw_networkx(
+    G,
+    pos,
+    node_color="skyblue",
+    node_size=3500,
+    with_labels=True,
+    font_size=11,
+    font_weight="bold",
+    arrows=True,
+    arrowsize=25
+)
+
+plt.title("Bayesian Belief Network")
+plt.axis("off")
+plt.show()
 ````
 
 
