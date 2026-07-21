@@ -1,6 +1,6 @@
-<H3>Name : Logesh.N.A</H3>
+<H3>Name : KISHORE B</H3>
 
-<H3>Register No. : 212223240078</H3>
+<H3>Register No. : 212224100032</H3>
 
 <H3>Experiment 1</H3>
 
